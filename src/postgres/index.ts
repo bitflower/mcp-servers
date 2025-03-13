@@ -40,6 +40,8 @@ const pool = new pg.Pool({
 });
 
 const SCHEMA_PATH = 'schema';
+const TYPE_TABLE = 'table';
+const TYPE_PROCEDURE = 'procedure';
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
   const client = await pool.connect();
@@ -53,14 +55,18 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
     return {
       resources: [
         ...resultTables.rows.map((row) => ({
-          uri: new URL(`${row.table_name}/${SCHEMA_PATH}`, resourceBaseUrl)
-            .href,
+          uri: new URL(
+            `${TYPE_TABLE}/${row.table_name}/${SCHEMA_PATH}`,
+            resourceBaseUrl
+          ).href,
           mimeType: 'application/json',
           name: `"${row.table_name}" database schema`,
         })),
         ...resultProcedures.rows.map((row) => ({
-          uri: new URL(`${row.routine_name}/${SCHEMA_PATH}`, resourceBaseUrl)
-            .href,
+          uri: new URL(
+            `${TYPE_PROCEDURE}/${row.routine_name}/${SCHEMA_PATH}`,
+            resourceBaseUrl
+          ).href,
           mimeType: 'application/json',
           name: `"${row.routine_name}" database procedure`,
         })),

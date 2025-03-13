@@ -99,34 +99,40 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const client = await pool.connect();
   try {
     let result;
-    if (schemaOrBody === SCHEMA_PATH) {
-      result = await client.query(
-        'SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1',
-        [ressourceName]
-      );
-    } else if (schemaOrBody === PARAMETERS_PATH) {
-      result = await client.query(
-        `SELECT p.parameter_name, p.parameter_mode, p.data_type
-          FROM information_schema.routines r
-          LEFT JOIN information_schema.parameters p
-            ON r.specific_name = p.specific_name
-          WHERE r.routine_type = 'PROCEDURE'
-          AND r.routine_name = $1
-          ORDER BY p.ordinal_position`,
-        [ressourceName]
-      );
-    } else if (schemaOrBody === BODY_PATH) {
-      result = await client.query(
-        `SELECT p.proname AS procedure_name, n.nspname AS schema_name, pg_get_functiondef(p.oid) AS procedure_definition
+    switch (schemaOrBody) {
+      case SCHEMA_PATH:
+        result = await client.query(
+          'SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1',
+          [ressourceName]
+        );
+        break;
+
+      case PARAMETERS_PATH:
+        result = await client.query(
+          `SELECT p.parameter_name, p.parameter_mode, p.data_type
+        FROM information_schema.routines r
+        LEFT JOIN information_schema.parameters p
+          ON r.specific_name = p.specific_name
+        WHERE r.routine_type = 'PROCEDURE'
+        AND r.routine_name = $1
+        ORDER BY p.ordinal_position`,
+          [ressourceName]
+        );
+        break;
+
+      case BODY_PATH:
+        result = await client.query(
+          `SELECT p.proname AS procedure_name, n.nspname AS schema_name, pg_get_functiondef(p.oid) AS procedure_definition
          FROM pg_proc p
          JOIN pg_namespace n ON p.pronamespace = n.oid
          WHERE p.prokind = 'p'
          AND p.proname = $1`,
-        [ressourceName]
-      );
-    } else {
-      //  throw new Error('Unsupported resource type');
-      throw new Error('Invalid resource URI');
+          [ressourceName]
+        );
+        break;
+
+      default:
+        throw new Error('Invalid resource URI');
     }
 
     return {

@@ -39,7 +39,9 @@ const pool = new pg.Pool({
   connectionString: databaseUrl,
 });
 
-const SCHEMA_PATH = 'schema';
+const SCHEMA_PATH = 'table_schema';
+const PARAMETERS_PATH = 'procedure_parameters';
+const BODY_PATH = 'procedure_body';
 const TYPE_TABLE = 'table';
 const TYPE_PROCEDURE = 'procedure';
 
@@ -55,20 +57,24 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
     return {
       resources: [
         ...resultTables.rows.map((row) => ({
-          uri: new URL(
-            `${TYPE_TABLE}/${row.table_name}/${SCHEMA_PATH}`,
-            resourceBaseUrl
-          ).href,
+          uri: new URL(`${row.table_name}/${SCHEMA_PATH}`, resourceBaseUrl)
+            .href,
           mimeType: 'application/json',
-          name: `"${row.table_name}" database schema`,
+          name: `"${row.table_name}" table schema`,
         })),
         ...resultProcedures.rows.map((row) => ({
           uri: new URL(
-            `${TYPE_PROCEDURE}/${row.routine_name}/${SCHEMA_PATH}`,
+            `${row.routine_name}/${PARAMETERS_PATH}`,
             resourceBaseUrl
           ).href,
           mimeType: 'application/json',
-          name: `"${row.routine_name}" database procedure`,
+          name: `"${row.routine_name}" procedure parameters`,
+        })),
+        ...resultProcedures.rows.map((row) => ({
+          uri: new URL(`${row.routine_name}/${BODY_PATH}`, resourceBaseUrl)
+            .href,
+          mimeType: 'application/json',
+          name: `"${row.routine_name}" procedure body`,
         })),
       ],
     };
@@ -80,20 +86,48 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const resourceUrl = new URL(request.params.uri);
 
-  const pathComponents = resourceUrl.pathname.split('/');
-  const schema = pathComponents.pop();
-  const tableName = pathComponents.pop();
+  // Example url: postgres://root@host.docker.internal:5432/workflow_entity/table_schema
 
-  if (schema !== SCHEMA_PATH) {
-    throw new Error('Invalid resource URI');
-  }
+  const pathComponents = resourceUrl.pathname.split('/');
+  const schemaOrBody = pathComponents.pop(); // table_schema', 'procedure_parameters', 'procedure_body'
+  const ressourceName = pathComponents.pop(); // 'workflow_entity'
+
+  // if (schemaOrBody !== SCHEMA_PATH) {
+  //   throw new Error('Invalid resource URI');
+  // }
 
   const client = await pool.connect();
   try {
-    const result = await client.query(
-      'SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1',
-      [tableName]
-    );
+    let result;
+    if (schemaOrBody === SCHEMA_PATH) {
+      result = await client.query(
+        'SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1',
+        [ressourceName]
+      );
+    } else if (schemaOrBody === PARAMETERS_PATH) {
+      result = await client.query(
+        `SELECT p.parameter_name, p.parameter_mode, p.data_type
+          FROM information_schema.routines r
+          LEFT JOIN information_schema.parameters p
+            ON r.specific_name = p.specific_name
+          WHERE r.routine_type = 'PROCEDURE'
+          AND r.routine_name = $1
+          ORDER BY p.ordinal_position`,
+        [ressourceName]
+      );
+    } else if (schemaOrBody === BODY_PATH) {
+      result = await client.query(
+        `SELECT p.proname AS procedure_name, n.nspname AS schema_name, pg_get_functiondef(p.oid) AS procedure_definition
+         FROM pg_proc p
+         JOIN pg_namespace n ON p.pronamespace = n.oid
+         WHERE p.prokind = 'p'
+         AND p.proname = $1`,
+        [ressourceName]
+      );
+    } else {
+      //  throw new Error('Unsupported resource type');
+      throw new Error('Invalid resource URI');
+    }
 
     return {
       contents: [

@@ -48,12 +48,23 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
     const selectProceduresQuery = `SELECT routine_name, routine_schema, specific_schema, routine_type FROM information_schema.routines WHERE routine_type = 'PROCEDURE'`;
 
     const resultTables = await client.query(selectTablesQuery);
+    const resultProcedures = await client.query(selectProceduresQuery);
+
     return {
-      resources: resultTables.rows.map((row) => ({
-        uri: new URL(`${row.table_name}/${SCHEMA_PATH}`, resourceBaseUrl).href,
-        mimeType: 'application/json',
-        name: `"${row.table_name}" database schema`,
-      })),
+      resources: [
+        ...resultTables.rows.map((row) => ({
+          uri: new URL(`${row.table_name}/${SCHEMA_PATH}`, resourceBaseUrl)
+            .href,
+          mimeType: 'application/json',
+          name: `"${row.table_name}" database schema`,
+        })),
+        ...resultProcedures.rows.map((row) => ({
+          uri: new URL(`${row.routine_name}/${SCHEMA_PATH}`, resourceBaseUrl)
+            .href,
+          mimeType: 'application/json',
+          name: `"${row.routine_name}" database procedure`,
+        })),
+      ],
     };
   } finally {
     client.release();

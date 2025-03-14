@@ -92,10 +92,6 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const schemaOrBody = pathComponents.pop(); // table_schema', 'procedure_parameters', 'procedure_body'
   const ressourceName = pathComponents.pop(); // 'workflow_entity'
 
-  // if (schemaOrBody !== SCHEMA_PATH) {
-  //   throw new Error('Invalid resource URI');
-  // }
-
   const client = await pool.connect();
   try {
     let result;

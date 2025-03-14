@@ -81,6 +81,14 @@ Docker:
 docker run -it --rm --name mcp_server mcp/postgres:latest "postgresql://root:password@host.docker.internal:5432/n8n"
 ```
 
+## Inspecting the MCP Server
+
+In the console run:
+
+```sh
+npx @modelcontextprotocol/inspector node dist/index.js
+```
+
 ## License
 
 This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.

@@ -86,7 +86,15 @@ docker run -it --rm --name mcp_server mcp/postgres:latest "postgresql://root:pas
 In the console run:
 
 ```sh
-npx @modelcontextprotocol/inspector node dist/index.js
+npx @modelcontextprotocol/inspector node dist/index.js postgresql://root:password@localhost:5432/n8n
+```
+
+> Note the different host as we can this fro the host machine not the docker container.
+
+Or just use the npm script:
+
+```sh
+npm run inspector
 ```
 
 ## License

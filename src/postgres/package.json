@@ -16,7 +16,8 @@
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js postgresql://root:password@localhost:5432/n8n"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.0.1",
